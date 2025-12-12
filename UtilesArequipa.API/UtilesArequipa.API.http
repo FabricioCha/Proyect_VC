@@ -1,0 +1,6 @@
+@UtilesArequipa.API_HostAddress = http://localhost:5195
+
+GET {{UtilesArequipa.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

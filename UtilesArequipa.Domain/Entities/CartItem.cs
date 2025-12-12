@@ -1,0 +1,15 @@
+namespace UtilesArequipa.Domain.Entities;
+
+public class CartItem
+{
+    public int Id { get; set; }
+    public int? CartId { get; set; }
+    public int? ProductId { get; set; }
+    public int? KitId { get; set; }
+    public int Quantity { get; set; }
+    public decimal Price { get; set; }
+
+    public Cart? Cart { get; set; }
+    public Product? Product { get; set; }
+    public Kit? Kit { get; set; }
+}
