@@ -29,37 +29,32 @@ public class SeedController : ControllerBase
             return NotFound();
         }
 
-        // Limpiar DB (Opcional - solo borramos datos clave para evitar duplicados si ya existen, o verificamos existencia)
-        // Por simplicidad, verificaremos si ya existen usuarios para no duplicar
-        if (await _context.Users.AnyAsync())
+        // 1. Asegurar Admin
+        var admin = await _context.Users.FirstOrDefaultAsync(u => u.Email == "admin@utiles.com");
+        if (admin == null)
         {
-            return Ok(new { message = "La base de datos ya tiene datos. Se omitió el seed." });
+            admin = new User
+            {
+                FirstName = "Admin",
+                LastName = "System",
+                Email = "admin@utiles.com",
+                Role = "admin",
+                CreatedAt = DateTime.UtcNow
+            };
+            await _context.Users.AddAsync(admin);
         }
+        
+        // Siempre actualizar password y asegurar rol
+        admin.PasswordHash = _passwordHasher.HashPassword("Admin123!");
+        admin.Role = "admin"; // Asegurar que sea admin
+        admin.UpdatedAt = DateTime.UtcNow;
 
-        // 1. Crear Usuarios
-        var admin = new User
+        await _context.SaveChangesAsync(CancellationToken.None);
+
+        if (await _context.Products.AnyAsync())
         {
-            FirstName = "Admin",
-            LastName = "System",
-            Email = "admin@utiles.com",
-            PasswordHash = _passwordHasher.HashPassword("Admin123!"),
-            Role = "admin",
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
-
-        var customer = new User
-        {
-            FirstName = "Cliente",
-            LastName = "Prueba",
-            Email = "cliente@utiles.com",
-            PasswordHash = _passwordHasher.HashPassword("Cliente123!"),
-            Role = "customer",
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
-
-        _context.Users.AddRange(admin, customer);
+            return Ok(new { message = "Admin restaurado. Productos ya existen." });
+        }
 
         // 2. Crear Productos
         var p1 = new Product

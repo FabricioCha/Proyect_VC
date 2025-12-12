@@ -47,6 +47,7 @@ public class ErrorHandlerMiddleware
             var result = JsonSerializer.Serialize(new 
             { 
                 message = error?.Message, 
+                innerException = error?.InnerException?.Message,
                 detalle = _env.IsDevelopment() ? error?.StackTrace : "Error interno del servidor" 
             });
             await response.WriteAsync(result);

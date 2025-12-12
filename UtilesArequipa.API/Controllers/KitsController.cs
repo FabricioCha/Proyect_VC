@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using UtilesArequipa.Application.Features.Kits.Commands;
+using UtilesArequipa.Application.Features.Kits.Queries.GetKits;
 using UtilesArequipa.Infrastructure.Services;
 
 namespace UtilesArequipa.API.Controllers;
@@ -18,6 +19,13 @@ public class KitsController : ControllerBase
     {
         _mediator = mediator;
         _backgroundJobClient = backgroundJobClient;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAll()
+    {
+        var kits = await _mediator.Send(new GetKitsQuery());
+        return Ok(kits);
     }
 
     [HttpPost]

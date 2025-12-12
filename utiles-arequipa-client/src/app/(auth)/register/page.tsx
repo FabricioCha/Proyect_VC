@@ -1,0 +1,243 @@
+"use client";
+
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { motion } from "framer-motion";
+import { useState } from "react";
+import api from "@/services/api";
+import { useAuthStore } from "@/store/useAuthStore";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { User, Mail, Lock, Phone, Loader2 } from "lucide-react";
+
+const registerSchema = z.object({
+  firstName: z.string().min(2, "El nombre es muy corto"),
+  lastName: z.string().min(2, "El apellido es muy corto"),
+  email: z.string().email("Email inválido"),
+  phone: z.string().optional(),
+  password: z.string().min(6, "Mínimo 6 caracteres"),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Las contraseñas no coinciden",
+  path: ["confirmPassword"],
+});
+
+type RegisterFormValues = z.infer<typeof registerSchema>;
+
+export default function RegisterPage() {
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const login = useAuthStore((state) => state.login); // Auto-login after register? Or redirect to login
+  const router = useRouter();
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerSchema),
+  });
+
+  const onSubmit = async (data: RegisterFormValues) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      // Registrar
+      const registerData = {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.phone,
+        password: data.password,
+      };
+      
+      const response = await api.post("/auth/register", registerData);
+      
+      // Opcional: Auto login si el backend devuelve token al registrar, 
+      // si no, redirigir a login. Asumamos que devuelve { userId } y luego hacemos login o pedimos login.
+      // Si el backend sigue el estándar previo, devolvía { userId }. 
+      // Para mejor UX, podríamos intentar loguear automáticamente o pedir que inicie sesión.
+      // Vamos a redirigir al login con un mensaje de éxito o intentar login directo si tenemos credenciales.
+      
+      // Intento de login automático
+      try {
+        const loginRes = await api.post("/auth/login", {
+          email: data.email,
+          password: data.password,
+        });
+        login(loginRes.data.token);
+        router.push("/dashboard");
+      } catch {
+        router.push("/login");
+      }
+
+    } catch (err: any) {
+      setError(
+        err.response?.data?.message || "Error al registrarse. Intente nuevamente."
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-md space-y-8 rounded-xl bg-white p-10 shadow-xl"
+      >
+        <div>
+          <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-gray-900">
+            Crear una cuenta
+          </h2>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            Únete a UtilesArequipa hoy mismo
+          </p>
+        </div>
+
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="rounded-md bg-red-50 p-4 text-sm text-red-700"
+          >
+            {error}
+          </motion.div>
+        )}
+
+        <form className="mt-8 space-y-4" onSubmit={handleSubmit(onSubmit)}>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="firstName" className="sr-only">Nombre</label>
+              <div className="relative">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                  <User className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="firstName"
+                  type="text"
+                  required
+                  className={`block w-full rounded-md border-0 py-3 pl-10 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 ${errors.firstName ? "ring-red-500" : ""}`}
+                  placeholder="Nombre"
+                  {...register("firstName")}
+                />
+              </div>
+              {errors.firstName && <p className="mt-1 text-xs text-red-500">{errors.firstName.message}</p>}
+            </div>
+            <div>
+              <label htmlFor="lastName" className="sr-only">Apellido</label>
+              <input
+                id="lastName"
+                type="text"
+                required
+                className={`block w-full rounded-md border-0 py-3 px-3 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 ${errors.lastName ? "ring-red-500" : ""}`}
+                placeholder="Apellido"
+                {...register("lastName")}
+              />
+              {errors.lastName && <p className="mt-1 text-xs text-red-500">{errors.lastName.message}</p>}
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="email" className="sr-only">Email</label>
+            <div className="relative">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <Mail className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                id="email"
+                type="email"
+                required
+                className={`block w-full rounded-md border-0 py-3 pl-10 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 ${errors.email ? "ring-red-500" : ""}`}
+                placeholder="Correo electrónico"
+                {...register("email")}
+              />
+            </div>
+            {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>}
+          </div>
+
+          <div>
+            <label htmlFor="phone" className="sr-only">Teléfono</label>
+            <div className="relative">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <Phone className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                id="phone"
+                type="tel"
+                className="block w-full rounded-md border-0 py-3 pl-10 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                placeholder="Teléfono (Opcional)"
+                {...register("phone")}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="password" className="sr-only">Contraseña</label>
+            <div className="relative">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <Lock className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                id="password"
+                type="password"
+                required
+                className={`block w-full rounded-md border-0 py-3 pl-10 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 ${errors.password ? "ring-red-500" : ""}`}
+                placeholder="Contraseña"
+                {...register("password")}
+              />
+            </div>
+            {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>}
+          </div>
+
+          <div>
+            <label htmlFor="confirmPassword" className="sr-only">Confirmar Contraseña</label>
+            <div className="relative">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <Lock className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                id="confirmPassword"
+                type="password"
+                required
+                className={`block w-full rounded-md border-0 py-3 pl-10 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 ${errors.confirmPassword ? "ring-red-500" : ""}`}
+                placeholder="Confirmar Contraseña"
+                {...register("confirmPassword")}
+              />
+            </div>
+            {errors.confirmPassword && <p className="mt-1 text-xs text-red-500">{errors.confirmPassword.message}</p>}
+          </div>
+
+          <div>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="group relative flex w-full justify-center rounded-md bg-indigo-600 px-3 py-3 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:bg-indigo-400"
+            >
+              {isLoading ? (
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              ) : (
+                "Registrarse"
+              )}
+            </button>
+          </div>
+        </form>
+
+        <div className="text-center text-sm">
+          <p className="text-gray-600">
+            ¿Ya tienes una cuenta?{" "}
+            <Link
+              href="/login"
+              className="font-medium text-indigo-600 hover:text-indigo-500"
+            >
+              Inicia sesión
+            </Link>
+          </p>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
